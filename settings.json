@@ -8,13 +8,14 @@
             "Y": 0,
             "Z": -2,
             "Yaw": -180
-        },
-        "Drone2": {
-            "VehicleType": "SimpleFlight",
-            "X": 8,
-            "Y": 0,
-            "Z": -2
         }
+        // For multi-drone simulation
+        // "Drone2": {
+        //     "VehicleType": "SimpleFlight",
+        //     "X": 8,
+        //     "Y": 0,
+        //     "Z": -2
+        // }
     },
     "CameraDefaults": {
         "CaptureSettings": [

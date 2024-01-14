@@ -7,14 +7,14 @@ aw.fly_to([x, y, z]) - flies the drone to the position specified as a list of th
 aw.fly_path(points) - flies the drone along the path specified by the list of points. Each point is again a list of 3 floats corresponding to X, Y, Z coordinates.
 aw.set_yaw(yaw) - sets the yaw of the drone to the specified value in degrees.
 aw.get_yaw() - returns the current yaw of the drone in degrees.
-aw.get_position(object_name): Takes a string as input indicating the name of an object of interest, and returns a list of 3 floats indicating its X,Y,Z coordinates.
+aw.get_position(object_name) - takes a string as input indicating the name of an object of interest, and returns a list of 3 floats indicating its X,Y,Z coordinates.
 aw.flutter() - the drone keeps moving in a 'random' way within a confined radius. 
 aw.start_fluttering() - the drone starts fluttering
 aw.stop_fluttering() - the drone stops fluttering
 aw.generate_circular_path(center, radius, height, segments=12) - generates a circular path around a center point with a specified radius and height
-aw.take_photo(filename) - the drone takes a photo of what it sees in FPV. 
-aw.analyze_with_vision_model(image_data) - The drone use the photo from take_photo() to analyze the image, where image_data is passed in from take_photo
-aw.query_language_model(prompt) - Query a language model with a specified prompt
+aw.take_photo() - the drone takes a photo of what it sees in FPV
+aw.analyze_with_vision_model(image_data) - analyze the image provided, where image_data is passed in from take_photo
+aw.query_language_model(prompt) - query the language model (reasoning module) with a specified prompt
 aw.count(self, object_name) - counts the number of instances of the specified object in the scene
 aw.search(self, object_name, radius) - search a certain radius around a specified object
 aw.get_latitude_longitude(self, object_name) - returns the latitude and longitude coordinates of the specific object

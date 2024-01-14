@@ -12,7 +12,6 @@ import numpy as np
 import openai
 import requests
 from google.cloud import vision
-from inference import get_roboflow_model
 
 objects_dict = {
     "turbine1": "BP_Wind_Turbines_C_1",
@@ -82,6 +81,8 @@ class AirSimWrapper:
         while len(object_names_ue) == 0:
             object_names_ue = self.client.simListSceneObjects(query_string)
         pose = self.client.simGetObjectPose(object_names_ue[0])
+        if object_name == "crowd": # tweak to get good cam view of crowd, or change pitch/yaw in settings.json
+            return [pose.position.x_val+2, pose.position.y_val, pose.position.z_val]
         return [pose.position.x_val, pose.position.y_val, pose.position.z_val]
 
     @staticmethod
@@ -101,24 +102,19 @@ class AirSimWrapper:
         start_position = self.client.simGetVehiclePose().position
 
         while not self.stop_thread:
-            # Propose a random direction
-            pitch = random.uniform(-1, 1)  # Forward/backward
-            roll = random.uniform(-1, 1)  # Left/right
-            yaw = random.uniform(-1, 1)  # Rotate
+            pitch = random.uniform(-1, 1) 
+            roll = random.uniform(-1, 1)
+            yaw = random.uniform(-1, 1)
 
-            # Move the drone in the proposed direction
             self.client.moveByRollPitchYawrateThrottleAsync(
                 roll, pitch, yaw, 0.5, change_interval
             ).join()
 
-            # Get the current position
             current_position = self.client.simGetVehiclePose().position
 
-            # Check if the drone is within the boundary
             if not self.is_within_boundary(
                 start_position, current_position, limit_radius
             ):
-                # If outside the boundary, adjust to a new random direction
                 self.client.moveToPositionAsync(
                     start_position.x_val,
                     start_position.y_val,
@@ -126,7 +122,6 @@ class AirSimWrapper:
                     speed,
                 ).join()
 
-            # Wait for the next change
             time.sleep(change_interval)
 
     def start_fluttering(self, speed=5, change_interval=1, limit_radius=10):
@@ -167,12 +162,13 @@ class AirSimWrapper:
     def analyze_with_vision_model(self, image_data):
         # Google Vision API: https://cloud.google.com/vision/docs/object-localizer
         client = vision.ImageAnnotatorClient()
-        content = image_data.read()
+        content = base64.b64decode(image_data)
         image = vision.Image(content=content)
         objects = client.object_localization(image=image).localized_object_annotations
         return objects
 
     def query_language_model(self, prompt):
+        """ Query inner LM to interpret json from vision model (outer LM interprets human language instructions) """
         with open("config.json", "r") as f:
             config = json.load(f)
         openai.api_key = config["OPENAI_API_KEY"]
@@ -187,17 +183,19 @@ class AirSimWrapper:
         )
         return completion.choices[0].message.content
 
-    # Complex Commands
+    # Complex commands
     def count(self, object_name):
-        # Converts vision model json output to string, append to count prompt
-        filename = "count" + object_name + ".jpg"
-        image_data = self.take_photo(filename)
+        """ Count the number of instances of target object """
+        image_data = self.take_photo()
         vision_outputs = self.analyze_with_vision_model(image_data)
-        prompt = "\n Based on this json output, count the number of instances of " + object_name + " in the scene. Return a single number"
-        return self.query_language_model(str(vision_outputs) + prompt)
+        # Naive: converts vision model json output to string, append to count prompt
+        prompt = "\n\n Based on this json output, count the number of instances of " + object_name + " in the scene. Return a single number"
+        response = self.query_language_model(str(vision_outputs) + prompt)
+        print(response)
+        return response
+        
 
     def search(self, object_name, radius):
-        # Fly to object, fly in a circle, take photos, check if object present
         self.fly_to(self.get_position(object_name))
         circular_path = self.generate_circular_path(
             self.get_position(object_name)[:2],
@@ -210,7 +208,7 @@ class AirSimWrapper:
             image_data = self.take_photo(str(point))
             vision_output = self.analyze_with_vision_model(image_data)
             vision_outputs += str(vision_output)
-        prompt = "\n Based on these json outputs, is " + object_name + " present in the scene? Return TRUE or FALSE."
+        prompt = "\n Based on these json outputs, is " + object_name + "present in the scene? Return TRUE or FALSE."
         return self.query_language_model(str(vision_outputs) + prompt)
 
     def get_latitude_longitude(self, object_name):
